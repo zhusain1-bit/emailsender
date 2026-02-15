@@ -1,0 +1,15 @@
+Hi {first_name},
+
+I hope this message finds you well. My name is [YOUR NAME], and I'm a student at Babson College.
+
+I came across {company} and was impressed by the work your team is doing. As someone interested in [YOUR FIELD/INTEREST], I'd love to learn more about your experience as {role} at {company}.
+
+Would you be open to a brief 15-minute conversation at your convenience? I'd really appreciate any insights you could share.
+
+Thank you for your time, and I look forward to hearing from you.
+
+Best regards,
+[YOUR NAME]
+Babson College
+[YOUR EMAIL]
+[YOUR PHONE NUMBER]
