@@ -1,15 +1,11 @@
 Hi {first_name},
 
-I hope this message finds you well. My name is [YOUR NAME], and I'm a student at Babson College.
+I hope you're doing well. I'm a senior at Babson (Class of 2026) and came across your profile while researching alumni in finance.
 
-I came across {company} and was impressed by the work your team is doing. As someone interested in [YOUR FIELD/INTEREST], I'd love to learn more about your experience as {role} at {company}.
+I saw that you're currently {role}, and I'd really value the opportunity to learn more about your path from Babson to {company}.
 
-Would you be open to a brief 15-minute conversation at your convenience? I'd really appreciate any insights you could share.
+If you're open to it, would you have 15–20 minutes for a quick call in the next few days? I'm happy to work around your schedule.
 
-Thank you for your time, and I look forward to hearing from you.
-
-Best regards,
-[YOUR NAME]
-Babson College
-[YOUR EMAIL]
-[YOUR PHONE NUMBER]
+Best,
+Zohair Husain
+Babson Class of 2026
