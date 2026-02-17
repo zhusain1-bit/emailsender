@@ -79,14 +79,25 @@ def get_sheet_data(cfg):
     return records
 
 
+def article_for(text):
+    """Return 'an' if *text* starts with a vowel sound, otherwise 'a'."""
+    if not text:
+        return "a"
+    return "an" if text[0].lower() in "aeiou" else "a"
+
+
 def map_record(record, cfg):
     """Map a raw sheet row dict to our standard variable names."""
+    role = str(record.get(cfg["google_sheets"]["col_role"], "")).strip()
+    role_lower = role.lower()
+    a_role = f"{article_for(role_lower)} {role_lower}" if role_lower else ""
     return {
         "first_name": str(record.get(cfg["google_sheets"]["col_first_name"], "")).strip(),
         "last_name": str(record.get(cfg["google_sheets"]["col_last_name"], "")).strip(),
         "email": str(record.get(cfg["google_sheets"]["col_email"], "")).strip(),
         "company": str(record.get(cfg["google_sheets"]["col_company"], "")).strip(),
-        "role": str(record.get(cfg["google_sheets"]["col_role"], "")).strip(),
+        "role": role,
+        "a_role": a_role,
     }
 
 

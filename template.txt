@@ -2,7 +2,7 @@ Hi {first_name},
 
 I hope you're doing well. I'm a senior at Babson (Class of 2026) and came across your profile while researching alumni in finance.
 
-I saw that you're currently {role}, and I'd really value the opportunity to learn more about your path from Babson to {company}.
+I saw that you're currently {a_role} at {company}, and I'd really value the opportunity to learn more about your career path after Babson.
 
 If you're open to it, would you have 15–20 minutes for a quick call in the next few days? I'm happy to work around your schedule.
 
