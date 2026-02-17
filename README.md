@@ -1,19 +1,69 @@
 # Email Outreach Automation
 
-Reads contacts from a Google Sheet and sends personalized emails via SendGrid with preview, confirmation, dry-run, and logging.
+Reads contacts from a Google Sheet and sends personalized outreach emails with dry-run, logging, and scheduling.
+
+Two approaches are available:
+
+| Approach | Pros | Cons |
+|---|---|---|
+| **Google Apps Script** (recommended) | Sends from your real Gmail — no spam flags, no "via" tag, no API keys, free | Must use Google Sheets script editor |
+| **Python + SendGrid** | Runs locally, CLI with interactive confirmations | Emails show "via sendgrid.net", requires API key and service account |
 
 ## Files
 
 | File | Purpose |
 |---|---|
-| `email_outreach.py` | Main script |
-| `config.ini` | All settings (Sheet ID, SMTP, columns, schedule) |
-| `template.txt` | Editable email body template |
+| `apps_script/Code.gs` | Google Apps Script version (recommended) |
+| `email_outreach.py` | Python + SendGrid version |
+| `config.ini` | Settings for the Python version |
+| `template.txt` | Email template for the Python version |
 | `requirements.txt` | Python dependencies |
 | `email_log.csv` | Auto-generated log of sent emails |
-| `credentials.json` | Google API credentials (you create this — **never commit it**) |
+| `credentials.json` | Google API credentials — Python version only (**never commit**) |
 
-## Setup
+---
+
+## Option A: Google Apps Script (Recommended)
+
+Emails send directly from your school Gmail account — fully authenticated, no "via" tag, no spam warnings.
+
+### Setup
+
+1. Open your Google Sheet in a browser
+2. Go to **Extensions → Apps Script**
+3. Delete any code in the editor
+4. Copy and paste the contents of `apps_script/Code.gs`
+5. Update the `CONFIG` object at the top to match your sheet column names
+6. Edit the `EMAIL_TEMPLATE` string to customize your email body
+7. Click **Save**
+
+### Sending emails
+
+1. **First run**: Click **Run** → select `sendEmails` → click **Review Permissions** → authorize with your school account
+2. After that, use the **Email Outreach** menu that appears in your Google Sheet:
+   - **Email Outreach → Send Emails** — sends to all rows not yet marked "Done"
+   - **Email Outreach → Dry Run** — previews what would be sent (check View → Executions for output)
+
+### Scheduling (daily auto-send)
+
+1. In the Apps Script editor, click the **Triggers** icon (clock icon in the left sidebar)
+2. Click **Add Trigger**
+3. Set:
+   - Function: `sendEmails`
+   - Event source: **Time-driven**
+   - Type: **Day timer**
+   - Time: pick your preferred window (e.g., 9am to 10am)
+4. Click **Save**
+
+### Gmail sending limits
+
+Google Workspace (school) accounts can send up to **2,000 emails/day**. Personal Gmail accounts are limited to 500/day.
+
+---
+
+## Option B: Python + SendGrid
+
+### Setup
 
 ### 1. Python environment
 
