@@ -2,30 +2,146 @@
 
 Reads contacts from a Google Sheet and sends personalized outreach emails with dry-run, logging, and scheduling.
 
-Two approaches are available:
+Three approaches are available:
 
 | Approach | Pros | Cons |
 |---|---|---|
-| **Google Apps Script** (recommended) | Sends from your real Gmail — no spam flags, no "via" tag, no API keys, free | Must use Google Sheets script editor |
+| **Power Automate** (recommended) | Sends from your real school Outlook — no spam flags, free with Microsoft 365, no code | Configured in browser, not local code |
+| **Google Apps Script** | Sends from your real Gmail — no API keys, free | Only works with Google Workspace email |
 | **Python + SendGrid** | Runs locally, CLI with interactive confirmations | Emails show "via sendgrid.net", requires API key and service account |
 
 ## Files
 
 | File | Purpose |
 |---|---|
-| `apps_script/Code.gs` | Google Apps Script version (recommended) |
+| `apps_script/Code.gs` | Google Apps Script version (Gmail accounts only) |
 | `email_outreach.py` | Python + SendGrid version |
 | `config.ini` | Settings for the Python version |
-| `template.txt` | Email template for the Python version |
+| `template.txt` | Email template reference |
 | `requirements.txt` | Python dependencies |
-| `email_log.csv` | Auto-generated log of sent emails |
-| `credentials.json` | Google API credentials — Python version only (**never commit**) |
 
 ---
 
-## Option A: Google Apps Script (Recommended)
+## Option A: Power Automate (Recommended for Microsoft / Outlook school email)
 
-Emails send directly from your school Gmail account — fully authenticated, no "via" tag, no spam warnings.
+Sends directly from your `zhusain1@babson.edu` Outlook account — fully authenticated, no third-party service, free with your school Microsoft 365 license.
+
+### Prerequisites
+
+- Your school Microsoft 365 account (`zhusain1@babson.edu`)
+- Your contacts in a Google Sheet with columns: **First Name**, **Last Name**, **Person Email**, **Company**, **Role**, **Done**
+
+### Setup
+
+1. Go to [Power Automate](https://make.powerautomate.com/) and sign in with your **school account**
+2. Click **+ Create** in the left sidebar → **Automated cloud flow**
+3. Name it `Email Outreach` and choose the trigger **Recurrence** → click **Create**
+
+### Step 1: Set the schedule
+
+1. In the **Recurrence** trigger, set:
+   - **Interval**: `1`
+   - **Frequency**: `Day`
+   - **At these hours**: `9` (or whenever you want emails to go out)
+   - **Time zone**: `(UTC-05:00) Eastern Time`
+
+### Step 2: Connect to Google Sheets
+
+1. Click **+ New step** → search for **Google Sheets** → select **Get rows**
+2. Sign in with the Google account that owns the spreadsheet
+3. Configure:
+   - **File**: select your spreadsheet
+   - **Worksheet**: select the sheet tab with your contacts (e.g., `Sheet3`)
+
+### Step 3: Loop through each contact
+
+1. Click **+ New step** → search **Apply to each** → select it
+2. In the **Select an output from previous steps** field, click the dynamic content panel and select **value** (the rows from Google Sheets)
+
+### Step 4: Check if already contacted
+
+Inside the **Apply to each** loop:
+
+1. Click **Add an action** → search **Condition** → select it
+2. Set the condition:
+   - Left side: select the **Done** column from dynamic content
+   - Operator: **is equal to**
+   - Right side: leave it **blank** (empty)
+
+### Step 5: Send the email (in the "If yes" branch)
+
+In the **If yes** branch (Done is empty):
+
+1. Click **Add an action** → search **Office 365 Outlook** → select **Send an email (V2)**
+2. Configure the fields:
+   - **To**: select **Person Email** from dynamic content
+   - **Subject**: type your subject, inserting dynamic content where needed:
+     ```
+     Babson Student Interested in [Company]
+     ```
+     (Click the **Company** column from the dynamic content panel to insert it)
+   - **Body**: paste your email template, inserting dynamic content for each variable:
+     ```
+     Hi [First Name],
+
+     I hope you're doing well. I'm a senior at Babson (Class of 2026) and came across
+     your profile while researching alumni in finance.
+
+     I saw that you're currently a [Role] at [Company], and I'd really value the
+     opportunity to learn more about your career path after Babson.
+
+     If you're open to it, would you have 15–20 minutes for a quick call in the next
+     few days? I'm happy to work around your schedule.
+
+     Best,
+     Zohair Husain
+     Babson Class of 2026
+     ```
+     Replace each `[bracketed term]` by clicking the matching column name from the dynamic content panel.
+
+### Step 6: Mark the row as done
+
+Still in the **If yes** branch, after the Send email action:
+
+1. Click **Add an action** → search **Google Sheets** → select **Update row**
+2. Configure:
+   - **File**: same spreadsheet
+   - **Worksheet**: same sheet tab
+   - **Row id**: select the row ID from dynamic content (often called **\_\_PowerAppsId\_\_** or the row key)
+   - **Done**: type `Done` or use an expression like `utcNow()` for a timestamp
+
+### Step 7: Save and test
+
+1. Click **Save** in the top-right
+2. Click **Test** → **Manually** → **Test** to run it once and verify
+3. Check your Outlook **Sent** folder to confirm emails went out correctly
+4. After confirming, the flow will run automatically on your schedule
+
+### Flow summary
+
+```
+Recurrence (daily at 9 AM)
+  → Get rows from Google Sheet
+  → For each row:
+      → Condition: is "Done" column empty?
+        → Yes: Send email via Outlook → Update row (mark Done)
+        → No: skip
+```
+
+### Tips
+
+- **Test first**: Before enabling the schedule, use **Test → Manually** to send to just one row. You can temporarily remove all but one contact, or add a condition to only send to your own email.
+- **Rate limits**: Microsoft 365 education accounts allow **10,000 emails/day** — more than enough for outreach.
+- **Runs in the cloud**: Power Automate runs on Microsoft's servers. No need to keep your computer on.
+- **Edit the template**: To change the email body later, open the flow, click the **Send an email** action, and edit directly.
+
+---
+
+## Option B: Google Apps Script (Gmail accounts only)
+
+> **Note:** This only works if your school email is a Google Workspace / Gmail account. If your school uses Microsoft 365 (Outlook), use Option A instead.
+
+Emails send directly from your Gmail account — fully authenticated, no "via" tag, no spam warnings.
 
 ### Setup
 
@@ -61,7 +177,7 @@ Google Workspace (school) accounts can send up to **2,000 emails/day**. Personal
 
 ---
 
-## Option B: Python + SendGrid
+## Option C: Python + SendGrid
 
 ### Setup
 
