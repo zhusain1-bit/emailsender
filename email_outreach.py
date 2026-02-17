@@ -3,7 +3,7 @@
 Daily Email Outreach Automation
 
 Reads contacts from a Google Sheet, applies an editable email template,
-and sends personalized emails via Outlook SMTP with safety confirmations.
+and sends personalized emails via SendGrid with safety confirmations.
 
 Usage:
     python email_outreach.py                # Interactive mode (confirm each email)
@@ -16,16 +16,15 @@ import argparse
 import configparser
 import csv
 import os
-import smtplib
 import sys
 import time
 from datetime import datetime
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from pathlib import Path
 
 import gspread
 from google.oauth2.service_account import Credentials
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 
 # ---------------------------------------------------------------------------
@@ -122,37 +121,35 @@ def render_subject(cfg, variables):
 # Email Sending
 # ---------------------------------------------------------------------------
 
-def get_smtp_password(cfg):
-    """Get the SMTP app password from config or environment variable."""
-    password = cfg["smtp"]["app_password"]
-    if password == "ENV":
-        password = os.environ.get("EMAIL_APP_PASSWORD", "")
-    if not password:
-        print("ERROR: No email password configured.")
-        print("Set 'app_password' in config.ini or the EMAIL_APP_PASSWORD environment variable.")
+def get_sendgrid_api_key(cfg):
+    """Get the SendGrid API key from config or environment variable."""
+    api_key = cfg["sendgrid"]["api_key"]
+    if api_key == "ENV":
+        api_key = os.environ.get("SENDGRID_API_KEY", "")
+    if not api_key:
+        print("ERROR: No SendGrid API key configured.")
+        print("Set 'api_key' in config.ini or the SENDGRID_API_KEY environment variable.")
         sys.exit(1)
-    return password
+    return api_key
 
 
 def send_email(cfg, to_email, subject, body):
-    """Send a single email via SMTP."""
-    sender = cfg["smtp"]["sender_email"]
-    password = get_smtp_password(cfg)
-    server_host = cfg["smtp"]["server"]
-    port = int(cfg["smtp"]["port"])
+    """Send a single email via SendGrid."""
+    sender = cfg["sendgrid"]["sender_email"]
+    api_key = get_sendgrid_api_key(cfg)
 
-    msg = MIMEMultipart("alternative")
-    msg["From"] = sender
-    msg["To"] = to_email
-    msg["Subject"] = subject
-    msg.attach(MIMEText(body, "plain", "utf-8"))
+    message = Mail(
+        from_email=sender,
+        to_emails=to_email,
+        subject=subject,
+        plain_text_content=body,
+    )
 
-    with smtplib.SMTP(server_host, port) as server:
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-        server.login(sender, password)
-        server.sendmail(sender, to_email, msg.as_string())
+    sg = SendGridAPIClient(api_key)
+    response = sg.send(message)
+
+    if response.status_code not in (200, 201, 202):
+        raise Exception(f"SendGrid returned status {response.status_code}: {response.body}")
 
 
 # ---------------------------------------------------------------------------

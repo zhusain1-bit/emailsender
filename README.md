@@ -1,6 +1,6 @@
 # Email Outreach Automation
 
-Reads contacts from a Google Sheet and sends personalized emails via Outlook SMTP with preview, confirmation, dry-run, and logging.
+Reads contacts from a Google Sheet and sends personalized emails via SendGrid with preview, confirmation, dry-run, and logging.
 
 ## Files
 
@@ -49,24 +49,24 @@ You need a **service account** so the script can read your Google Sheet.
    - Open your Google Sheet in a browser
    - Click **Share** and add that email address with **Viewer** access
 
-### 3. Outlook SMTP (app password)
+### 3. SendGrid API key
 
-Your Babson Outlook account uses Microsoft 365. To send emails via SMTP you need an **app password** because MFA is likely enabled.
+SendGrid lets you send emails via API — no app password or university SMTP access needed.
 
-1. Go to [https://mysignins.microsoft.com/security-info](https://mysignins.microsoft.com/security-info)
-2. Sign in with your Babson account
-3. Click **Add sign-in method → App password**
-4. Name it (e.g., "email-script") and copy the generated password
+1. Sign up for a free account at [https://signup.sendgrid.com/](https://signup.sendgrid.com/) (100 emails/day free)
+2. Go to **Settings → API Keys** ([https://app.sendgrid.com/settings/api_keys](https://app.sendgrid.com/settings/api_keys))
+3. Click **Create API Key**, give it a name (e.g., "email-outreach"), select **Restricted Access** with **Mail Send** permission, and click **Create & View**
+4. Copy the API key (you won't be able to see it again)
 
-Set the password as an environment variable (recommended):
+Set the API key as an environment variable (recommended):
 
 ```bash
-export EMAIL_APP_PASSWORD="your-app-password-here"
+export SENDGRID_API_KEY="SG.your-api-key-here"
 ```
 
-Or put it directly in `config.ini` under `app_password` (less secure — avoid committing).
+Or put it directly in `config.ini` under `api_key` (less secure — avoid committing).
 
-> **Note:** If your organization has disabled app passwords, you may need to contact Babson IT or use Microsoft Graph API instead. The script can be adapted for that.
+5. **Verify your sender email**: Go to **Settings → Sender Authentication** ([https://app.sendgrid.com/settings/sender_auth](https://app.sendgrid.com/settings/sender_auth)) and verify the email address you want to send from (e.g., your Babson email). SendGrid will send a verification link to that address.
 
 ### 4. Edit config.ini
 
@@ -164,6 +164,7 @@ Every email attempt is logged to `email_log.csv` with:
 |---|---|
 | `credentials.json not found` | Complete the Google Sheets API setup in step 2 |
 | `No data found in the sheet` | Check that `sheet_name` in config.ini matches your tab name exactly ("Email") |
-| `SMTP authentication failed` | Verify your app password and sender_email; check if your org allows SMTP |
+| `SendGrid returned status 403` | Verify your sender email is authenticated in SendGrid Sender Authentication |
+| `No SendGrid API key configured` | Set the SENDGRID_API_KEY environment variable or update config.ini |
 | `Permission denied` on Google Sheet | Share the sheet with the service account email from credentials.json |
 | Rate limiting / throttling | Increase `delay_between_emails` in config.ini |
