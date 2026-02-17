@@ -24,7 +24,7 @@ from pathlib import Path
 import gspread
 from google.oauth2.service_account import Credentials
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
+from sendgrid.helpers.mail import Bcc, Mail
 
 
 # ---------------------------------------------------------------------------
@@ -182,6 +182,9 @@ def send_email(cfg, to_email, subject, body):
         subject=subject,
         plain_text_content=body,
     )
+
+    # BCC the sender so a copy appears in their inbox
+    message.personalizations[0].add_bcc(Bcc(sender))
 
     sg = SendGridAPIClient(api_key)
     response = sg.send(message)
