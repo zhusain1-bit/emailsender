@@ -290,12 +290,23 @@ def send(row_number):
     subject = render_subject(cfg, mapped)
     body = render_template(template_text, mapped)
 
+    # Validate API key before attempting to send (get_sendgrid_api_key calls
+    # sys.exit which would kill the Flask process instead of returning JSON)
+    api_key = cfg["sendgrid"]["api_key"]
+    if api_key == "ENV":
+        import os as _os
+        api_key = _os.environ.get("SENDGRID_API_KEY", "")
+    if not api_key:
+        return jsonify(ok=False, error="No SendGrid API key configured. Set SENDGRID_API_KEY env variable.")
+
     try:
         send_email(cfg, mapped["email"], subject, body)
         mark_done(worksheet, row_number, col_done)
         log_email(cfg, mapped["email"], mapped["first_name"], mapped["last_name"],
                   mapped["company"], subject, "sent")
         return jsonify(ok=True)
+    except SystemExit:
+        return jsonify(ok=False, error="Configuration error — check SendGrid API key and sender email.")
     except Exception as e:
         log_email(cfg, mapped["email"], mapped["first_name"], mapped["last_name"],
                   mapped["company"], subject, f"error: {e}")
