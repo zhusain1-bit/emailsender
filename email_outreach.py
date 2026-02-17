@@ -49,7 +49,7 @@ def load_config(config_path=CONFIG_PATH):
 # ---------------------------------------------------------------------------
 
 SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets.readonly",
+    "https://www.googleapis.com/auth/spreadsheets",
 ]
 
 
@@ -77,6 +77,33 @@ def get_sheet_data(cfg):
         sys.exit(0)
 
     return records
+
+
+def get_worksheet(cfg):
+    """Return the gspread worksheet object (with read/write access)."""
+    creds_file = Path(__file__).parent / cfg["google_sheets"]["credentials_file"]
+    if not creds_file.exists():
+        print(f"ERROR: Google credentials file not found at {creds_file}")
+        print("See README.md for setup instructions.")
+        sys.exit(1)
+
+    creds = Credentials.from_service_account_file(str(creds_file), scopes=SCOPES)
+    client = gspread.authorize(creds)
+
+    sheet_id = cfg["google_sheets"]["sheet_id"]
+    sheet_name = cfg["google_sheets"]["sheet_name"]
+
+    spreadsheet = client.open_by_key(sheet_id)
+    return spreadsheet.worksheet(sheet_name)
+
+
+def mark_done(worksheet, row_number, col_done_name):
+    """Write a timestamp into the 'Done' column for a given row."""
+    headers = worksheet.row_values(1)
+    if col_done_name not in headers:
+        raise ValueError(f"Column '{col_done_name}' not found in sheet headers: {headers}")
+    col_index = headers.index(col_done_name) + 1  # gspread is 1-indexed
+    worksheet.update_cell(row_number, col_index, datetime.now().strftime("%Y-%m-%d %H:%M"))
 
 
 def article_for(text):
@@ -250,18 +277,30 @@ def main():
 
     # --- Load data and template ---
     print("Fetching contacts from Google Sheets...")
-    records = get_sheet_data(cfg)
+    worksheet = get_worksheet(cfg)
+    records = worksheet.get_all_records()
+    if not records:
+        print("No data found in the sheet. Check your sheet_name and sheet_id in config.ini.")
+        return
     template_text = load_template(cfg)
+
+    col_done = cfg["google_sheets"].get("col_done", "Done")
 
     # --- Build email list ---
     emails_to_send = []
     skipped = 0
+    seen_emails = set()
 
-    for record in records:
+    for idx, record in enumerate(records):
         mapped = map_record(record, cfg)
 
         # Skip rows with no email address
         if not mapped["email"]:
+            skipped += 1
+            continue
+
+        # Skip rows already marked as done in the sheet
+        if str(record.get(col_done, "")).strip():
             skipped += 1
             continue
 
@@ -270,9 +309,19 @@ def main():
             skipped += 1
             continue
 
+        # Deduplicate by email address
+        email_lower = mapped["email"].lower()
+        if email_lower in seen_emails:
+            skipped += 1
+            continue
+        seen_emails.add(email_lower)
+
+        # row_number in the sheet (header is row 1, first data row is row 2)
+        row_number = idx + 2
+
         subject = render_subject(cfg, mapped)
         body = render_template(template_text, mapped)
-        emails_to_send.append((mapped, subject, body))
+        emails_to_send.append((mapped, subject, body, row_number))
 
     total = len(emails_to_send)
     print(f"\nFound {total} emails to send ({skipped} rows skipped).")
@@ -284,14 +333,14 @@ def main():
     # --- Dry run mode ---
     if args.dry_run:
         print("\n*** DRY RUN — no emails will be sent ***\n")
-        for i, (mapped, subject, body) in enumerate(emails_to_send, 1):
+        for i, (mapped, subject, body, _row) in enumerate(emails_to_send, 1):
             preview_email(i, total, mapped["email"], subject, body)
         print(f"\nDry run complete. {total} emails previewed.")
         return
 
     # --- Batch mode ---
     if args.batch:
-        for i, (mapped, subject, body) in enumerate(emails_to_send, 1):
+        for i, (mapped, subject, body, _row) in enumerate(emails_to_send, 1):
             preview_email(i, total, mapped["email"], subject, body)
 
         print(f"\n{'=' * 70}")
@@ -302,10 +351,11 @@ def main():
 
         delay = int(cfg["safety"]["delay_between_emails"])
         sent_count = 0
-        for i, (mapped, subject, body) in enumerate(emails_to_send, 1):
+        for i, (mapped, subject, body, row_number) in enumerate(emails_to_send, 1):
             try:
                 print(f"Sending {i}/{total} to {mapped['email']}...", end=" ")
                 send_email(cfg, mapped["email"], subject, body)
+                mark_done(worksheet, row_number, col_done)
                 log_email(cfg, mapped["email"], mapped["first_name"], mapped["last_name"],
                           mapped["company"], subject, "sent")
                 print("OK")
@@ -325,7 +375,7 @@ def main():
     delay = int(cfg["safety"]["delay_between_emails"])
     sent_count = 0
 
-    for i, (mapped, subject, body) in enumerate(emails_to_send, 1):
+    for i, (mapped, subject, body, row_number) in enumerate(emails_to_send, 1):
         preview_email(i, total, mapped["email"], subject, body)
         choice = confirm()
 
@@ -341,6 +391,7 @@ def main():
         try:
             print(f"Sending to {mapped['email']}...", end=" ")
             send_email(cfg, mapped["email"], subject, body)
+            mark_done(worksheet, row_number, col_done)
             log_email(cfg, mapped["email"], mapped["first_name"], mapped["last_name"],
                       mapped["company"], subject, "sent")
             print("OK")
